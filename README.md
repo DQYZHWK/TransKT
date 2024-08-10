@@ -4,7 +4,7 @@ Contrastive Cross-Course Knowledge Tracing via Concept Graph Guided Knowledge Tr
 
 Considering the relevance and transferability of learners' cross-course learning behaviors, we propose the TransKT framework to provide a more comprehensive and accurate understanding of learners' knowledge states for reliable prediction on the knowledge tracing task.
 ## 🌟Overview
-![TransKT_workflow](mainwork.png)
+![TransKT_workflow](assets/mainwork.png)
 
 The framework of TransKT. First, during preprocessing, TransKT employs GPT-4 to complete the concept-to-concept links both within and between courses, bridging individual concept graphs. Next, TransKT utilizes a semantic-enhanced knowledge transfer module, which leverages an LLM-to-LM pipeline to summarize and extract rich semantic features for GCN-based knowledge propagation. Following this, through hierarchical modeling, TransKT derives both interaction-level and course-level knowledge states. Finally, TransKT employs a contrastive learning objective to enhance the robustness of representations for prediction by maximizing mutual information between single-course and cross-course knowledge states.
 

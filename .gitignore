@@ -1,0 +1,7 @@
+**/__pycache__
+**/*.jsonl
+**/*.npy
+**/*.ipynb
+.vscode/*
+logs/*
+trained/*

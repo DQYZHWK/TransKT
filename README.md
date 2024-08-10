@@ -23,7 +23,7 @@ pip install -r requirements.txt
 ### Create directory
 Unzip the TransKT dataset files and create training, testing, and validation sets:
 ```bash
-unzip C_DS_dataset.zip  # Take C&DS dataset for example.
+unzip C_DS.zip  # Take C&DS dataset for example.
 python split.py
 ```
 Establishing the directory for the output file of the optimal model:
@@ -37,8 +37,8 @@ mkdir logs
 ### Training & Testing
 Our model experiments are conducted on a Tesla A800, with actual VRAM requirements of around 10 GB. You can execute it directly using Python commands.
 ```python
-CUDA_VISIBLE_DEVICES=3 python -u main.py --lr 0.0001 --batch_size 128 --model_id ours --num_epoch 200 --gnn 2  --optim adamw  --IM 1 \
-    --lambda 0.6 --eta 0.7  --warm_epoch 0 > logs/test.log 2>&1&
+CUDA_VISIBLE_DEVICES=3 python -u main.py --lr 0.0001 --batch_size 64 --model_id ours --num_epoch 200  --optim adamw  --IM 1 --theta1 0.2 --theta2 0.7  \
+  --lambda 0.8 --eta 0.4  --warm_epoch 0 --GNNL 2 > log/test.log 2>&1&
 ```
 You can also choose to directly execute the shell script in the command line:
 ```bash

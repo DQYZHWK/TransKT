@@ -28,7 +28,7 @@ class SimpleKT_Encoder(nn.Module):
         n_heads=opt["num_heads"]
         dropout=opt["dropout"]
         kq_same=1
-        seq_len=opt["maxlen"]
+        seq_len=opt["maxproblem"]
         model_type='simplekt'
         super().__init__()
         """

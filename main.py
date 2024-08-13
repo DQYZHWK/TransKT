@@ -18,35 +18,6 @@ parser.add_argument('--warm_epoch', type=int, default=0, help='epochs for only p
 # TransKT model part
 parser.add_argument('--dataset', type=str, default='C_DS', help='Java_Python,C_DS,C_Java,CA_DS')
 
-
-# CS-MA
-# parser.add_argument('--courseX_citem', type=int, default=359, help='')
-# parser.add_argument('--courseY_citem', type=int, default=140, help='')
-# parser.add_argument('--courseX_pitem', type=int, default=5870, help='') 
-# parser.add_argument('--courseY_pitem', type=int, default=1386, help='')
-# parser.add_argument('--cidnum', type=int, default=499, help='')
-# parser.add_argument('--pidnum', type=int, default=7256, help='')
-# parser.add_argument('--nitem', type=int, default=7757, help='')
-
-# C&JAVA
-# parser.add_argument('--courseX_citem', type=int, default=424, help='')
-# parser.add_argument('--courseY_citem', type=int, default=408, help='')
-# parser.add_argument('--courseX_pitem', type=int, default=11934, help='') 
-# parser.add_argument('--courseY_pitem', type=int, default=7624, help='')
-# parser.add_argument('--cidnum', type=int, default=832, help='')
-# parser.add_argument('--pidnum', type=int, default=19558, help='')
-# parser.add_argument('--nitem', type=int, default=20392, help='')
-
-
-# Java_Python
-# parser.add_argument('--courseX_citem', type=int, default=360, help='')
-# parser.add_argument('--courseY_citem', type=int, default=364, help='')
-# parser.add_argument('--courseX_pitem', type=int, default=5734, help='') 
-# parser.add_argument('--courseY_pitem', type=int, default=7562, help='')
-# parser.add_argument('--cidnum', type=int, default=724, help='')
-# parser.add_argument('--pidnum', type=int, default=13296, help='')
-# parser.add_argument('--nitem', type=int, default=14022, help='')
-
 # C&DS
 parser.add_argument('--courseX_citem', type=int, default=362, help='')
 parser.add_argument('--courseY_citem', type=int, default=323, help='')
@@ -57,11 +28,7 @@ parser.add_argument('--pidnum', type=int, default=20598, help='')
 parser.add_argument('--nitem', type=int, default=21285, help='')
 
 
-
-
-
-parser.add_argument('--maxlen', type=int, default=32,help='Upper limit of each p-set sequence length')
-parser.add_argument('--maxproblem', type=int, default=64,help='Upper bound on the number of questions each p-set contains')
+parser.add_argument('--maxproblem', type=int, default=64,help='Upper bound on the number of questions')
 parser.add_argument('--lambda', type=float, default=0.9,help='Regularization factor 𝜆')
 parser.add_argument('--eta', type=float, default=0.7,help='Joint p-set level knowledge state factor 𝜂') 
 parser.add_argument('--theta1', type=float, default=0.0,help='Threshold for negative sampling') 
@@ -88,7 +55,7 @@ parser.add_argument('--model', type=str, default="CL4KT", help='baseline model n
 
 # train part              
 parser.add_argument('--num_epoch', type=int, default=50, help='Number of total training epochs.')
-parser.add_argument('--batch_size', type=int, default=64, help='Training batch size.')
+parser.add_argument('--batch_size', type=int, default=128, help='Training batch size.')
 parser.add_argument('--seed', type=int, default=2125)
 parser.add_argument('--lr', type=float, default=0.001, help='Applies to sgd and adagrad.')
 parser.add_argument('--lr_decay', type=float, default=1, help='Learning rate decay rate.')
@@ -99,7 +66,7 @@ parser.add_argument('--optim', choices=['sgd', 'adagrad', 'adam', 'adamax','adam
 parser.add_argument('--device', type=str, default="cuda", help='device')
 parser.add_argument('--model_save_dir', type=str, default="trained", help='model name')
 parser.add_argument('--model_id', type=str, default="pretrain", help='model name')
-
+parser.add_argument('--semantic_emb', type=int, default=1,help='load semantic embedding or not')
 def seed_everything(seed=2319): 
     random.seed(seed)
     torch.manual_seed(seed)
@@ -122,7 +89,6 @@ print("graph loaded!")  #
 if opt["device"]=="cuda":
     adj = adj.cuda()
     adj_single = adj_single.cuda()
-
 #####
 
 
@@ -162,7 +128,6 @@ for seed in seed_pools:
     
     # stage2: reload trainer
     for epoch in range(1, opt['num_epoch'] + 1):
-        
         
         # ---------- STEP:train -------------#
         train_loss_all = 0

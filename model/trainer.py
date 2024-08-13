@@ -103,17 +103,14 @@ class TransKTtainer(Trainer):
             set_mask=inputs[6]
             set_x_mask=inputs[7]
             set_y_mask=inputs[8]
-            ps_mask=inputs[9]
-            ps_x_mask=inputs[10]
-            ps_y_mask=inputs[11]
-            first=inputs[12]
-            last=inputs[13]
-            x_first=inputs[14]
-            x_last=inputs[15]
-            y_first=inputs[16]
-            y_last=inputs[17]
-            re_p=inputs[18]
-            re_r=inputs[19]
+            re_p=inputs[9]
+            re_r=inputs[10]
+            first=inputs[11]
+            last=inputs[12]
+            x_first=inputs[13]
+            x_last=inputs[14]
+            y_first=inputs[15]
+            y_last=inputs[16]
         else:
             inputs = [Variable(b) for b in batch]
             set_p=inputs[0]
@@ -125,19 +122,16 @@ class TransKTtainer(Trainer):
             set_mask=inputs[6]
             set_x_mask=inputs[7]
             set_y_mask=inputs[8]
-            ps_mask=inputs[9]
-            ps_x_mask=inputs[10]
-            ps_y_mask=inputs[11]
-            first=inputs[12]
-            last=inputs[13]
-            x_first=inputs[14]
-            x_last=inputs[15]
-            y_first=inputs[16]
-            y_last=inputs[17]
-            re_p=inputs[18]
-            re_r=inputs[19]
+            re_p=inputs[9]
+            re_r=inputs[10]
+            first=inputs[11]
+            last=inputs[12]
+            x_first=inputs[13]
+            x_last=inputs[14]
+            y_first=inputs[15]
+            y_last=inputs[16]
             
-        return set_p,set_px,set_py,set_r,set_rx,set_ry,set_mask,set_x_mask,set_y_mask,ps_mask,ps_x_mask,ps_y_mask,first,last,x_first,x_last,y_first,y_last,re_p,re_r
+        return set_p,set_px,set_py,set_r,set_rx,set_ry,set_mask,set_x_mask,set_y_mask,re_p,re_r,first,last,x_first,x_last,y_first,y_last
 
     def shift(self,emb,index):
         batch_size = emb.size(0)
@@ -185,21 +179,21 @@ class TransKTtainer(Trainer):
         loss_neg = self.BCE_criterion(x_neg_score,neg_label)+self.BCE_criterion(y_neg_score,neg_label)
         return loss_neg+loss_pos
     
-    def get_prototype(self,H,H_X,H_Y,NEG_H,ps_mask,ps_x_mask,ps_y_mask,first,x_first,y_first,epoch):
+    def get_prototype(self,H,H_X,H_Y,NEG_H,first,x_first,y_first,mask,x_mask,y_mask):
         single_x_score=self.model.prototype_att(H_X).squeeze(-1)
         single_y_score=self.model.prototype_att(H_Y).squeeze(-1)
         cross_score=self.model.prototype_att(H).squeeze(-1)
         cro_score=self.model.prototype_att(NEG_H).squeeze(-1)
         
-        single_x_score = single_x_score.masked_fill(ps_x_mask == 0, float('-inf'))
-        single_y_score = single_y_score.masked_fill(ps_y_mask == 0, float('-inf'))
-        cross_score = cross_score.masked_fill(ps_mask == 0, float('-inf'))
-        cro_score = cro_score.masked_fill(ps_mask == 0, float('-inf'))
+        single_x_score = single_x_score.masked_fill(x_mask == 0, float('-inf'))
+        single_y_score = single_y_score.masked_fill(y_mask == 0, float('-inf'))
+        cross_score = cross_score.masked_fill(mask == 0, float('-inf'))
+        cro_score = cro_score.masked_fill(mask == 0, float('-inf'))
         
-        cross_x_score=cross_score.masked_fill(ps_x_mask == 0, float('-inf'))
-        cross_y_score=cross_score.masked_fill(ps_y_mask == 0, float('-inf'))
-        cro_x_score=cro_score.masked_fill(ps_x_mask == 0, float('-inf'))
-        cro_y_score=cro_score.masked_fill(ps_y_mask == 0, float('-inf'))
+        cross_x_score=cross_score.masked_fill(x_mask == 0, float('-inf'))
+        cross_y_score=cross_score.masked_fill(y_mask == 0, float('-inf'))
+        cro_x_score=cro_score.masked_fill(x_mask == 0, float('-inf'))
+        cro_y_score=cro_score.masked_fill(y_mask == 0, float('-inf'))
         
         single_x_weights=F.softmax(single_x_score,dim=-1)
         single_y_weights=F.softmax(single_y_score,dim=-1)
@@ -211,14 +205,14 @@ class TransKTtainer(Trainer):
         cro_x_wei=F.softmax(cro_x_score,dim=-1)
         cro_y_wei=F.softmax(cro_y_score,dim=-1)
         
-        single_x_weights = torch.where(ps_x_mask == 0, torch.tensor(0.0).cuda(), single_x_weights)
-        single_y_weights = torch.where(ps_y_mask == 0, torch.tensor(0.0).cuda(), single_y_weights)
-        cross_weights = torch.where(ps_mask == 0, torch.tensor(0.0).cuda(), cross_weights)
-        cro_weights = torch.where(ps_mask == 0, torch.tensor(0.0).cuda(), cro_weights)
-        cross_x_wei = torch.where(ps_x_mask == 0, torch.tensor(0.0).cuda(), cross_x_wei)
-        cross_y_wei = torch.where(ps_y_mask == 0, torch.tensor(0.0).cuda(), cross_y_wei)
-        cro_x_wei = torch.where(ps_x_mask == 0, torch.tensor(0.0).cuda(), cro_x_wei)
-        cro_y_wei = torch.where(ps_y_mask == 0, torch.tensor(0.0).cuda(), cro_y_wei)
+        single_x_weights = torch.where(x_mask == 0, torch.tensor(0.0).cuda(), single_x_weights)
+        single_y_weights = torch.where(y_mask == 0, torch.tensor(0.0).cuda(), single_y_weights)
+        cross_weights = torch.where(mask == 0, torch.tensor(0.0).cuda(), cross_weights)
+        cro_weights = torch.where(mask == 0, torch.tensor(0.0).cuda(), cro_weights)
+        cross_x_wei = torch.where(x_mask == 0, torch.tensor(0.0).cuda(), cross_x_wei)
+        cross_y_wei = torch.where(y_mask == 0, torch.tensor(0.0).cuda(), cross_y_wei)
+        cro_x_wei = torch.where(x_mask == 0, torch.tensor(0.0).cuda(), cro_x_wei)
+        cro_y_wei = torch.where(y_mask == 0, torch.tensor(0.0).cuda(), cro_y_wei)
         
         prototype_x = torch.einsum('bmk,bm->bk',H_X,single_x_weights) 
         prototype_y = torch.einsum('bmk,bm->bk',H_Y,single_y_weights)
@@ -239,9 +233,8 @@ class TransKTtainer(Trainer):
         self.model.train()
         self.optimizer.zero_grad()
         self.model.graph_convolution()
-        set_p,set_px,set_py,set_r,set_rx,set_ry,set_mask,set_x_mask,set_y_mask,ps_mask,ps_x_mask,ps_y_mask,first,last,x_first,x_last,y_first,y_last,re_p,re_r=self.unpack_batch_ps(batch)
-        
-        H,H_X,H_Y,p_emb,p_x_emb,p_y_emb =self.model(set_p,set_px,set_py,set_r,set_rx,set_ry,set_mask,set_x_mask,set_y_mask,first,last,x_first,x_last,y_first,y_last,ps_mask,ps_x_mask,ps_y_mask)
+        set_p,set_px,set_py,set_r,set_rx,set_ry,set_mask,set_x_mask,set_y_mask,re_p,re_r,first,last,x_first,x_last,y_first,y_last=self.unpack_batch_ps(batch)
+        H,H_X,H_Y,p_emb,p_x_emb,p_y_emb =self.model(set_p,set_px,set_py,set_r,set_rx,set_ry,set_mask,set_x_mask,set_y_mask,first,last,x_first,x_last,y_first,y_last)
         
         
         NEG_H=self.model.cro(re_p,re_r,set_mask,x_first,y_first,x_last,y_last)
@@ -250,21 +243,26 @@ class TransKTtainer(Trainer):
         maxproblem=self.opt['maxproblem']
         
         
-        single_x=(l2*H_X+(1-l2)*H).unsqueeze(2).expand(-1,-1,maxproblem,-1)
-        single_y=(l2*H_Y+(1-l2)*H).unsqueeze(2).expand(-1,-1,maxproblem,-1)
+        single_x=(l2*H_X+(1-l2)*H)
+        single_y=(l2*H_Y+(1-l2)*H)
         
         concat_x=torch.cat([single_x,p_x_emb],dim=-1)
         concat_y=torch.cat([single_y,p_y_emb],dim=-1)
         predicate_x=self.model.out_X(concat_x).squeeze(-1)   
         predicate_y=self.model.out_Y(concat_y).squeeze(-1)
         
+        
+        # prototype 
+        prototype_x,prototype_y,cross_prototype,cro_prototype,cross_x,cross_y,cro_x,cro_y=self.get_prototype(H,H_X,H_Y,NEG_H,first,x_first,y_first,set_mask,set_x_mask,set_y_mask)
+
+        
         # predicate (r_2,...,r_n)
-        predicate_x=self.shift2(predicate_x,x_first)
-        predicate_y=self.shift2(predicate_y,y_first)
-        set_rx=self.shift2(set_rx,x_first)
-        set_ry=self.shift2(set_ry,y_first)
-        set_x_mask=self.shift2(set_x_mask,x_first)
-        set_y_mask=self.shift2(set_y_mask,y_first)
+        predicate_x=self.shift3(predicate_x,x_first)
+        predicate_y=self.shift3(predicate_y,y_first)
+        set_rx=self.shift3(set_rx,x_first)
+        set_ry=self.shift3(set_ry,y_first)
+        set_x_mask=self.shift3(set_x_mask,x_first)
+        set_y_mask=self.shift3(set_y_mask,y_first)
         
         predicat_x_mask_select=torch.masked_select(predicate_x,set_x_mask.bool())
         x_ground_mask_select=torch.masked_select(set_rx,set_x_mask.bool())
@@ -273,9 +271,7 @@ class TransKTtainer(Trainer):
         loss1 =  self.BCE_criterion(predicat_x_mask_select, x_ground_mask_select.float())+self.BCE_criterion(predicat_y_mask_select, y_ground_mask_select.float())
         l1=self.opt['lambda']
         loss=loss1*l1
-        # prototype 
-        prototype_x,prototype_y,cross_prototype,cro_prototype,cross_x,cross_y,cro_x,cro_y=self.get_prototype(H,H_X,H_Y,NEG_H,ps_mask,ps_x_mask,ps_y_mask,first,x_first,y_first,epoch)
-        
+     
         
         if self.opt['IM']==1:
             im_loss=self.IM_loss(prototype_x,prototype_y,cross_x,cross_y,cro_x,cro_y)
@@ -298,12 +294,11 @@ class TransKTtainer(Trainer):
         self.model.eval()
         l2=self.opt['eta']
         maxproblem=self.opt['maxproblem']
-        set_p,set_px,set_py,set_r,set_rx,set_ry,set_mask,set_x_mask,set_y_mask,ps_mask,ps_x_mask,ps_y_mask,first,last,x_first,x_last,y_first,y_last,re_p,re_r=self.unpack_batch_ps(batch)
-        H,H_X,H_Y,p_emb,p_x_emb,p_y_emb =self.model(set_p,set_px,set_py,set_r,set_rx,set_ry,set_mask,set_x_mask,set_y_mask,first,last,x_first,x_last,y_first,y_last,ps_mask,ps_x_mask,ps_y_mask)
+        set_p,set_px,set_py,set_r,set_rx,set_ry,set_mask,set_x_mask,set_y_mask,re_p,re_r,first,last,x_first,x_last,y_first,y_last=self.unpack_batch_ps(batch)
+        H,H_X,H_Y,p_emb,p_x_emb,p_y_emb =self.model(set_p,set_px,set_py,set_r,set_rx,set_ry,set_mask,set_x_mask,set_y_mask,first,last,x_first,x_last,y_first,y_last)
         
-        
-        single_x=(l2*H_X+(1-l2)*H).unsqueeze(2).expand(-1,-1,maxproblem,-1)
-        single_y=(l2*H_Y+(1-l2)*H).unsqueeze(2).expand(-1,-1,maxproblem,-1)
+        single_x=(l2*H_X+(1-l2)*H)
+        single_y=(l2*H_Y+(1-l2)*H)
         
         concat_x=torch.cat([single_x,p_x_emb],dim=-1)
         concat_y=torch.cat([single_y,p_y_emb],dim=-1)
@@ -314,14 +309,7 @@ class TransKTtainer(Trainer):
         predicate_x=MX(self.model.out_X(concat_x).squeeze(-1))
         predicate_y=MY(self.model.out_Y(concat_y).squeeze(-1))
         
-        predicate_x=self.shift2(predicate_x,x_first)
-        predicate_y=self.shift2(predicate_y,y_first)
-        
-        set_rx=self.shift2(set_rx,x_first)
-        set_ry=self.shift2(set_ry,y_first)
-        set_x_mask=self.shift2(set_x_mask,x_first)
-        set_y_mask=self.shift2(set_y_mask,y_first)
-        
+
         
         predicat_x_mask_select=torch.masked_select(predicate_x,set_x_mask.bool()).cpu().detach().numpy()
         x_ground_mask_select=torch.masked_select(set_rx,set_x_mask.bool()).cpu().detach().numpy()

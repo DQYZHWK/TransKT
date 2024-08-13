@@ -6,7 +6,7 @@ from torch.nn import Module, Embedding, Linear, MultiheadAttention, LayerNorm, D
 import copy
 from model.SimpleKT_Encoder import SimpleKT_Encoder
 from model.GNN import GCNLayer
-
+# from transformers import BertTokenizer, BertModel
 def get_clones(module, N):
     """ Cloning nn modules
     """
@@ -29,11 +29,18 @@ class TransKT(torch.nn.Module):
         self.cid_emb_Y = torch.nn.Embedding(self.opt["cidnum"]+1, 256, padding_idx=self.opt["cidnum"])
         
         # problem difficulty embedding(mq)
-        self.p_diffculty_emb = torch.nn.Embedding(self.opt["pidnum"]+1,256,padding_idx=self.opt["pidnum"])
-        self.p_diffculty_emb_X = torch.nn.Embedding(self.opt["pidnum"]+1,256,padding_idx=self.opt["pidnum"])
-        self.p_diffculty_emb_Y = torch.nn.Embedding(self.opt["pidnum"]+1,256,padding_idx=self.opt["pidnum"])
+        self.pid_emb = torch.nn.Embedding(self.opt["pidnum"]+1,256,padding_idx=self.opt["pidnum"])
+        self.pid_emb_X = torch.nn.Embedding(self.opt["pidnum"]+1,256,padding_idx=self.opt["pidnum"])
+        self.pid_emb_Y = torch.nn.Embedding(self.opt["pidnum"]+1,256,padding_idx=self.opt["pidnum"])
         
-        # response embedding(r)
+        if opt['semantic_emb']==1:
+            self.cid_emb.weight.data.copy_(torch.from_numpy(np.load("dataset/C_DS/con_weight.npy")))
+            self.cid_emb_X.weight.data.copy_(torch.from_numpy(np.load("dataset/C_DS/con_weight_X.npy")))
+            self.cid_emb_Y.weight.data.copy_(torch.from_numpy(np.load("dataset/C_DS/con_weight_Y.npy")))
+            self.pid_emb.weight.data.copy_(torch.from_numpy(np.load("dataset/C_DS/que_weight.npy")))
+            self.pid_emb_X.weight.data.copy_(torch.from_numpy(np.load("dataset/C_DS/que_weight_X.npy")))
+            self.pid_emb_Y.weight.data.copy_(torch.from_numpy(np.load("dataset/C_DS/que_weight_Y.npy")))
+            
         self.response_emb = torch.nn.Embedding(3, self.opt["hidden_units"],padding_idx=2)
         self.response_emb_X = torch.nn.Embedding(3, self.opt["hidden_units"],padding_idx=2)
         self.response_emb_Y = torch.nn.Embedding(3, self.opt["hidden_units"],padding_idx=2)
@@ -41,7 +48,7 @@ class TransKT(torch.nn.Module):
         KC_MAT=np.load(self.opt["kc_mat_path"])
         self.KC_MAT=torch.from_numpy(KC_MAT).cuda()
         
-        self.seq_len = opt['maxlen']
+        # self.seq_len = opt['maxlen']
         self.emb_size =opt['hidden_units']
         self.num_attn_heads = opt['num_heads']
         self.dropout = opt['dropout']
@@ -49,7 +56,6 @@ class TransKT(torch.nn.Module):
         self.dropout_layer = torch.nn.Dropout(self.dropout)
         self.pred_x = torch.nn.Linear(self.opt['hidden_units'], 1)  
         self.pred_y = torch.nn.Linear(self.opt['hidden_units'], 1)
-        self.position_emb = torch.nn.Embedding(self.seq_len+1, self.emb_size)
         
 
         self.prototype_att_x=torch.nn.Linear(self.opt['hidden_units'],1,bias=False)
@@ -109,6 +115,11 @@ class TransKT(torch.nn.Module):
         self.GNN_encoder = GCNLayer(opt)
         
         
+        # self.bert = BertModel.from_pretrained("/mnt/sdc/develop/hwk/chinese_roberta_wwm_large_ext")
+        # self.tokenizer = BertTokenizer.from_pretrained("/mnt/sdc/develop/hwk/chinese_roberta_wwm_large_ext")
+        # self.linear = nn.Linear(1024,self.opt["hidden_units"]) 
+        
+        
         if self.opt["device"]=="cuda":
             self.pitem_x_index=self.pitem_x_index.cuda()
             self.pitem_y_index=self.pitem_y_index.cuda()
@@ -116,6 +127,7 @@ class TransKT(torch.nn.Module):
             self.citem_x_index=self.citem_x_index.cuda()
             self.citem_y_index=self.citem_y_index.cuda()
             self.citem_index=self.citem_index.cuda()
+            # self.bert=self.bert.cuda()
     
     def shift(self,emb,index):
         batch_size = emb.size(0)
@@ -147,14 +159,14 @@ class TransKT(torch.nn.Module):
 
         return masked_dense_weights
     def cro(self,re_p,re_r,set_mask,x_first,y_first,x_last,y_last):
-        # p_emb=torch.cat([self.p_diffculty_emb(re_p),(torch.einsum('ij,jk->ik',self.KC_MAT.float(),self.cid_emb.weight.data)/(torch.sum(self.KC_MAT,dim=1,keepdim=True)+1e-8))[re_p]],dim=-1)
+       # p_emb=self.pid_emb(re_p)+(torch.einsum('ij,jk->ik',self.KC_MAT.float(),self.cid_emb.weight.data)/(torch.sum(self.KC_MAT,dim=1,keepdim=True)+1e-8))[re_p]
         p_emb=self.my_index_select(self.cross_emb, re_p)
         cro_pa=p_emb+self.response_emb(re_r)
-        masked_dense_weights=self.dense_attention2(p_emb,set_mask)
-        basket_pemb=torch.einsum('bmnk,bmn->bmk', p_emb, masked_dense_weights)
-        basket_pa_emb=torch.einsum('bmnk,bmn->bmk', cro_pa, masked_dense_weights)
+        # masked_dense_weights=self.dense_attention2(p_emb,set_mask)
+        # basket_pemb=torch.einsum('bmnk,bmn->bmk', p_emb, masked_dense_weights)
+        # basket_pa_emb=torch.einsum('bmnk,bmn->bmk', cro_pa, masked_dense_weights)
         
-        CH=self.encoder(basket_pemb,basket_pa_emb)
+        CH=self.encoder(p_emb,cro_pa)
         return CH
     
     def my_index_select_embedding(self, memory, index):
@@ -174,9 +186,9 @@ class TransKT(torch.nn.Module):
     
     
     def graph_convolution(self):
-        pfea = self.my_index_select_embedding(self.p_diffculty_emb, self.pitem_index)
-        pfea_X = self.my_index_select_embedding(self.p_diffculty_emb_X, self.pitem_index)
-        pfea_Y = self.my_index_select_embedding(self.p_diffculty_emb_Y, self.pitem_index)
+        pfea = self.my_index_select_embedding(self.pid_emb, self.pitem_index)
+        pfea_X = self.my_index_select_embedding(self.pid_emb_X, self.pitem_index)
+        pfea_Y = self.my_index_select_embedding(self.pid_emb_Y, self.pitem_index)
         
         
         cfea=self.my_index_select_embedding(self.cid_emb, self.citem_index)
@@ -194,38 +206,31 @@ class TransKT(torch.nn.Module):
     
     
      
-    def workflow_merge_basket(self,set_p,set_px,set_py,set_r,set_rx,set_ry,set_mask,set_x_mask,set_y_mask,first,last,x_first,x_last,y_first,y_last,ps_mask,ps_x_mask,ps_y_mask):
+    def workflow_merge_basket(self,set_p,set_px,set_py,set_r,set_rx,set_ry,set_mask,set_x_mask,set_y_mask,first,last,x_first,x_last,y_first,y_last):
         
         
-        # setting1 (good)
+       # setting1 (Knowledge Transfer)
         p_emb=self.my_index_select(self.cross_emb, set_p)
         p_x_emb=self.my_index_select(self.single_emb_X, set_px)
         p_y_emb=self.my_index_select(self.single_emb_Y, set_py)
       
         
-        # setting 0
-        # p_emb=self.p_diffculty_emb(set_p)+(torch.einsum('ij,jk->ik',self.KC_MAT.float(),self.cid_emb.weight.data)/(torch.sum(self.KC_MAT,dim=1,keepdim=True)+1e-8))[set_p]
-        # p_x_emb=self.p_diffculty_emb_X(set_p)+(torch.einsum('ij,jk->ik',self.KC_MAT.float(),self.cid_emb_X.weight.data)/(torch.sum(self.KC_MAT,dim=1,keepdim=True)+1e-8))[set_px]
-        # p_y_emb=self.p_diffculty_emb_Y(set_p)+(torch.einsum('ij,jk->ik',self.KC_MAT.float(),self.cid_emb_Y.weight.data)/(torch.sum(self.KC_MAT,dim=1,keepdim=True)+1e-8))[set_py]
+        # setting 0  (Without Knowledge Transfer)
+        # p_emb=self.pid_emb(set_p)+(torch.einsum('ij,jk->ik',self.KC_MAT.float(),self.cid_emb.weight.data)/(torch.sum(self.KC_MAT,dim=1,keepdim=True)+1e-8))[set_p]
+        # p_x_emb=self.pid_emb_X(set_p)+(torch.einsum('ij,jk->ik',self.KC_MAT.float(),self.cid_emb_X.weight.data)/(torch.sum(self.KC_MAT,dim=1,keepdim=True)+1e-8))[set_px]
+        # p_y_emb=self.pid_emb_Y(set_p)+(torch.einsum('ij,jk->ik',self.KC_MAT.float(),self.cid_emb_Y.weight.data)/(torch.sum(self.KC_MAT,dim=1,keepdim=True)+1e-8))[set_py]
         
         pa_emb=self.response_emb(set_r)+p_emb
         pa_x_emb=self.response_emb_X(set_rx)+p_x_emb
         pa_y_emb=self.response_emb_Y(set_ry)+p_y_emb
         
-        masked_dense_weights,x_masked_dense_weights,y_masked_dense_weights=self.dense_attention(p_emb,p_x_emb,p_y_emb,set_mask,set_x_mask,set_y_mask)
-        basket_emb=torch.einsum('bmnk,bmn->bmk', p_emb, masked_dense_weights)
-        basket_x_emb=torch.einsum('bmnk,bmn->bmk', p_x_emb, x_masked_dense_weights)
-        basket_y_emb=torch.einsum('bmnk,bmn->bmk', p_y_emb, y_masked_dense_weights)
-        
-        basket_ans_emb=torch.einsum('bmnk,bmn->bmk', pa_emb, masked_dense_weights)
-        basket_x_ans_emb=torch.einsum('bmnk,bmn->bmk', pa_x_emb, x_masked_dense_weights)
-        basket_y_ans_emb=torch.einsum('bmnk,bmn->bmk', pa_y_emb, y_masked_dense_weights)
-        H=self.encoder(basket_emb,basket_ans_emb)
-        H_X=self.encoder_X(basket_x_emb,basket_x_ans_emb)
-        H_Y=self.encoder_Y(basket_y_emb,basket_y_ans_emb)
+
+        H=self.encoder(p_emb,pa_emb)
+        H_X=self.encoder_X(p_x_emb,pa_x_emb)
+        H_Y=self.encoder_Y(p_y_emb,pa_y_emb)
         return H,H_X,H_Y,p_emb,p_x_emb,p_y_emb 
     
     
-    def forward(self,set_p,set_px,set_py,set_r,set_rx,set_ry,set_mask,set_x_mask,set_y_mask,first,last,x_first,x_last,y_first,y_last,ps_mask,ps_x_mask,ps_y_mask):
-        H,H_X,H_Y,p_emb,p_x_emb,p_y_emb =self.workflow_merge_basket(set_p,set_px,set_py,set_r,set_rx,set_ry,set_mask,set_x_mask,set_y_mask,first,last,x_first,x_last,y_first,y_last,ps_mask,ps_x_mask,ps_y_mask)
+    def forward(self,set_p,set_px,set_py,set_r,set_rx,set_ry,set_mask,set_x_mask,set_y_mask,first,last,x_first,x_last,y_first,y_last):
+        H,H_X,H_Y,p_emb,p_x_emb,p_y_emb =self.workflow_merge_basket(set_p,set_px,set_py,set_r,set_rx,set_ry,set_mask,set_x_mask,set_y_mask,first,last,x_first,x_last,y_first,y_last)
         return H,H_X,H_Y,p_emb,p_x_emb,p_y_emb
